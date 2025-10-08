@@ -45,6 +45,7 @@ module ex_stage_top (
     input  wire        reg_file_write_MEM_WB_i,
     input  wire [4:0]  reg_file_write_address_MEM_WB_i,
     input  wire [1:0]  mux_0_sel_MEM_WB_i,     // memtoreg of MEM/WB producer
+    input  wire id_valid_i,
 
     // -----------------------------------------------------------------
     // EX/MEM registered outputs (to MEM stage and for forwarding taps)
@@ -59,7 +60,10 @@ module ex_stage_top (
     output reg  [1:0]  memtoreg_o,
     output reg         memread_o,
     output reg         memwrite_o,
-    output reg  [2:0]  width_select_o
+    output reg  [2:0]  width_select_o,
+    output reg  [31:0] pc_address_o,
+    output reg         ex_valid_o
+
 );
 
     // Forwarding control
@@ -161,6 +165,8 @@ module ex_stage_top (
         memread_o      <= 1'b0;
         memwrite_o     <= 1'b0;
         width_select_o <= 3'b0;
+        pc_address_o   <= 32'b0;
+        ex_valid_o     <= 1'b0;
     end
     endtask
 
@@ -184,6 +190,8 @@ module ex_stage_top (
             memread_o      <= memread_i;
             memwrite_o     <= memwrite_i;
             width_select_o <= width_select_i;
+            pc_address_o   <= pc_address_i;
+            ex_valid_o     <= id_valid_i;
         end
         // else: hold on stall
     end

@@ -35,7 +35,8 @@ module control_unit (
     output wire [2:0]  width_select_o,     // see mapping above
 
     // WB stage 
-    output wire [1:0]  memtoreg_o          // 00=ALU, 01=MEM, 10=PC+4
+    output wire [1:0]  memtoreg_o,         // 00=ALU, 01=MEM, 10=PC+4
+    output wire valid_m_instruction_o
 );
 
     // --- opcode constants (RV32I)
@@ -92,8 +93,10 @@ module control_unit (
     // --- SYSTEM fields
     wire [11:0] csr_field  = instruction_i[31:20];
     wire [4:0]  zimm_field = instruction_i[19:15];
+    
     assign csr_addr_o = (opcode == OPCODE_SYSTEM) ? csr_field  : 12'b0;
     assign zimm_o     = (opcode == OPCODE_SYSTEM) ? zimm_field : 5'b0;
+    assign valid_m_instruction_o = (opcode == 7'b0110011) && (funct7 == 7'b0000001);
 
     // --- imm_o select
     assign imm_o = (opcode == OPCODE_LUI   || opcode == OPCODE_AUIPC) ? imm_u :

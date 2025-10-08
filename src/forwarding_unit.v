@@ -1,4 +1,4 @@
-// forwarding_unit.v
+`timescale 1ns/1ps
 // Adds PC+4 forwarding for JAL/JALR and blocks EX-stage forwarding of loads.
 // Output encoding (3 bits) selects the producer & source:
 //   000: no forwarding

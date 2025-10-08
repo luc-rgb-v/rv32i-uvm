@@ -22,6 +22,7 @@ module mem_stage (
     input  wire [1:0]  memtoreg_i,          // bypass: 00=ALU, 01=MEM, 10=PC+4
     input  wire [31:0] pc_address_i,        // bypass: PC for this instr (for PC+4 path)
     input  wire [31:0] alu_result_i,        // bypass: ALU result (also mem addr)
+    input  wire        ex_valid_i,
 
     // From external data memory (already read this cycle)
     input  wire [31:0] data_memory_i,       // load data / raw memory read
@@ -57,7 +58,7 @@ module mem_stage (
         end else if (flush_i) begin
             // Insert bubble into MEM/WB
             clear_regs();
-        end else if (!stall_i) begin
+        end else if (!stall_i && (ex_valid_i == 1'b1)) begin
             // Normal pipeline advance
             regwrite_o   <= regwrite_i;
             rd_addr_o    <= rd_addr_i;

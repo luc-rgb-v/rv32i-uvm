@@ -11,10 +11,10 @@ module if_stage_core(
     input  wire        rst_i,
 
     // Pipeline control
-    input  wire        stall_i,          // hold PC and IF/ID
-    input  wire        flush_i,          // external flush (e.g., trap)
-    input  wire        take_b_j_sig_i,   // branch/jump taken (from EX)
-    input  wire [31:0] pc_b_j_i,         // branch/jump target (byte address)
+    input  wire        stall_i,
+    input  wire        flush_i,
+    input  wire        take_b_j_sig_i,
+    input  wire [31:0] pc_b_j_i,
 
     // ---- Instruction memory interface (to be wrapped externally) ----
     output wire        imem_en_o,        // fetch enable (freeze when 0)
@@ -24,7 +24,7 @@ module if_stage_core(
     // ---- IF/ID pipeline register outputs ----
     output reg  [31:0] if_id_pc_o,       // PC of fetched instruction
     output reg  [31:0] if_id_instr_o,    // fetched instruction
-    output reg         if_id_valid_o,    // 1 when IF/ID holds a valid instr
+    output reg         if_valid_o,    // 1 when IF/ID holds a valid instr
 
     // (optional) expose current PC
     output wire [31:0] pc_o
@@ -67,15 +67,15 @@ module if_stage_core(
         if (rst_i) begin
             if_id_instr_o <= NOP_WORD;
             if_id_pc_o    <= RESET_PC;
-            if_id_valid_o <= 1'b0;
+            if_valid_o <= 1'b0;
         end else if (flush_ifid_w) begin
             if_id_instr_o <= NOP_WORD;
             if_id_pc_o    <= pc_q;      // value not used when invalid
-            if_id_valid_o <= 1'b0;
+            if_valid_o <= 1'b0;
         end else if (!stall_i) begin
             if_id_instr_o <= instr_d_i; // instruction for PC from previous cycle
             if_id_pc_o    <= pc_q;      // PC tag for that instruction
-            if_id_valid_o <= 1'b1;
+            if_valid_o <= 1'b1;
         end
         // else: hold on stall
     end

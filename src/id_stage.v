@@ -17,7 +17,7 @@ module id_stage (
     // fetch/I$ inputs
     input  wire [31:0] instruction_i,
     input  wire [31:0] pc_address_i,
-    input  wire        valid_m_instruction_i,  // validity of the fetched opcode
+    input  wire        if_valid_i,
 
     // Writeback port -> Register File
     input  wire        wb_regwrite_i,
@@ -51,10 +51,14 @@ module id_stage (
 
     // validity
     output reg         valid_m_instruction_o,
+    output reg         id_valid_o,
+
 
     // RS addresses (for forwarding/hazard unit in EX)
     output reg  [4:0]  rs1_addr_o,
-    output reg  [4:0]  rs2_addr_o
+    output reg  [4:0]  rs2_addr_o,
+    output wire  [4:0]  rs1_addr_w,
+    output wire  [4:0]  rs2_addr_w
 );
 
     // -----------------------------------------
@@ -78,7 +82,9 @@ module id_stage (
 
     wire [31:0] rs1_data_w;
     wire [31:0] rs2_data_w;
-
+    
+    assign rs1_addr_w = src1_addr_w;
+    assign rs2_addr_w = src2_addr_w;
     // -------------------------
     // Control Unit instance
     // -------------------------
@@ -105,7 +111,8 @@ module id_stage (
         .memwrite_o    (memwrite_w),
         .width_select_o(width_select_w),
 
-        .memtoreg_o    (memtoreg_w)
+        .memtoreg_o    (memtoreg_w),
+        .valid_m_instruction_o(valid_m_instruction_i)
     );
 
     // -------------------------
@@ -144,8 +151,10 @@ module id_stage (
         operand_b_o           <= 32'b0;
         pc_address_o          <= 32'b0;
         valid_m_instruction_o <= 1'b0;
+        id_valid_o            <= 1'b0;
         rs1_addr_o            <= 5'b0;   // for forwarding
         rs2_addr_o            <= 5'b0;   // for forwarding
+
     end
     endtask
 
@@ -187,7 +196,7 @@ module id_stage (
 
             // pass validity
             valid_m_instruction_o <= valid_m_instruction_i;
-
+            id_valid_o            <= if_valid_i;
             // expose rs addresses for forwarding/hazard unit
             rs1_addr_o            <= src1_addr_w;
             rs2_addr_o            <= src2_addr_w;
