@@ -16,7 +16,7 @@ module instr_mem_sync_addr (
 );
 
     localparam DEPTH_WORDS        = 1024;              // number of 32-bit words
-    localparam INIT_FILE          = "C:/Users/luchu/Desktop/temp/instruction.hex";
+    localparam INIT_FILE          = "/mnt/d/Github/rv32i/src/instruction.hex";
 
 
     localparam [31:0]  NOP_WORD           = 32'h00000013;
