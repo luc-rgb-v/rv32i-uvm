@@ -1,0 +1,34 @@
+    initial begin
+        $dumpfile("mimic_dum.vcd");
+        $dumvars(0,tb_mimic_mem);
+        $display("=== start sim ===");
+    end
+
+    task write; input [12:0] b; input [7:0] c; begin
+        #2.5;
+        wea = 1; address = b; dina = c;
+        $display("[%time] [write] wea = %b address = %b dina = %02H", $time, wea, address, dina);
+        @(negedge clka);
+    end
+
+    task read; input [12:0] b; input [7:0] c; begin
+        #2.5;
+        wea = 0; address = b; dina = c;
+        $display("[%0t] [read] wea = %b address = %b dina = %02H", $time, wea, address, dina);
+        @(negedge clka);
+    end
+
+    task stuff; input a begin
+        $display("Decimal: %d", a);     // Decimal: 10
+        $display("Binary : %b", a);     // Binary : 1010
+        $display("Hex    : %h", a);     // Hex    : a
+        $display("Octal  : %o", a);     // Octal  : 12
+        $display("Real   : %f", pi);    // Real   : 3.141590
+        $display("Time   : %0t", $time); // Time   : 0
+        $display("Module : %m");        // Module : testbench
+    end
+
+    task king; begin
+        $monitor("At time %0t: a=%b b=%b", $time, a, b);
+    end
+

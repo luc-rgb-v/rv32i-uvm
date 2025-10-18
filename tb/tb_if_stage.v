@@ -34,9 +34,6 @@ module tb_if_stage_bram4;
     // SIMULATION CONTROL
     // ==========================================================
     initial begin
-        $dumpfile("tb_if_stage.vcd");
-        $dumvar(0, tb_if_stage);
-
         $display("=== IF Stage BRAM4 Testbench ===");
         $display("Time(ns) | PC | INSTR | VALID | Notes");
 
