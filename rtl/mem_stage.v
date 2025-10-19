@@ -1,10 +1,10 @@
-` timescale 1ns / 1ps
+`timescale 1ns / 1ps
 //================= 
 // 17/10/2025
 // mem_stage.v
 //=================
 
-module memstage (
+module mem_stage (
     input wire clk_i,
     input wire rst_i,
     input wire stall_i,
@@ -26,10 +26,10 @@ module memstage (
     output reg         regwrite_o,
     output reg  [4:0]  rd_addr_o,
     output reg  [1:0]  memtoreg_o,
-    output reg  [31:0] pc_address_o,    // PC for PC+4 path
-    output reg  [31:0] alu_result_o,    // ALU result path
-    output reg  [31:0] mem_data_o,      // memory read data (already extended)
-    output reg         mem_valid_o,     // 1 when this MEM/WB entry is valid
+    output reg  [31:0] pc_address_o,
+    output reg  [31:0] alu_result_o,
+    output reg  [31:0] mem_data_o,
+    output reg         mem_valid_o
 );
 
     // ---------- funct3 ----------
@@ -49,29 +49,42 @@ module memstage (
     reg  [1:0]  s_memtoreg;
     reg  [31:0] s_pc_address;
     reg  [31:0] s_alu_result;
-    reg  [31:0] s_store_data;
-    reg         s_memread;
-    reg         s_memwrite;
-    reg  [2:0]  s_funct3;
     reg         s_valid;
    
+    task reset_sub_reg;
+        begin 
+            s_regwrite      <= 0;
+            s_rd_addr       <= 4'b0;
+            s_memtoreg      <= 0;
+            s_pc_address    <= 32'b0;
+            s_alu_result    <= 32'b0;
+            s_valid         <= 0;
+        end
+    endtask
+
     always @ (posedge clk_i or posedge rst_i) begin 
-        s_regwrite      <= regwrite_i;
-        s_rd_addr       <= rd_addr_i;
-        s_memtoreg      <= memtoreg_i;
-        s_pc_address    <= pc_address_i;
-        s_alu_result    <= alu_result_i;
-        s_valid         <= ex_valid_i;
+        if (rst_i) begin
+            reset_sub_reg;
+        end else if (flush_i) begin
+            reset_sub_reg;
+        end else if (~stall_i) begin
+            s_regwrite      <= regwrite_i;
+            s_rd_addr       <= rd_addr_i;
+            s_memtoreg      <= memtoreg_i;
+            s_pc_address    <= pc_address_i;
+            s_alu_result    <= alu_result_i;
+            s_valid         <= ex_valid_i  && !flush_i;
+        end
     end
 
     wire [12:0] memory_address = alu_result_i[14:2];
     wire [1:0] off_set = alu_result_i[1:0];
 
     // ---------- alignment check ----------
-    // wire misalign_h = memwrite_i ? (funct3_i == F3_SH && alu_result_i[0]) : 1'b0;
-    // wire misalign_w = memwrite_i ? (funct3_i == F3_SW && |alu_result_i[1:0]) : 1'b0;
-    // wire misaligned = misalign_h | misalign_w;
-    wire start_mem = ex_valid_i & (memread_i | memwrite_i); // & ~misaligned;
+    wire misalign_h = memwrite_i ? (funct3_i == F3_SH && alu_result_i[0]) : 1'b0;
+    wire misalign_w = memwrite_i ? (funct3_i == F3_SW && |alu_result_i[1:0]) : 1'b0;
+    wire misaligned = misalign_h | misalign_w;
+    wire start_mem = ex_valid_i & (memread_i | memwrite_i) & ~misaligned;
     
     // ---------- write enables ----------
     wire we0 = start_mem & memwrite_i &
@@ -91,12 +104,6 @@ module memstage (
                  (funct3_i == F3_SH && off_set[1] == 1'b1) |
                  (funct3_i == F3_SB && off_set == 2'b11) );
     
-    // ---------- bank enables ----------
-    wire ena0 = start_mem;
-    wire ena1 = start_mem;
-    wire ena2 = start_mem;
-    wire ena3 = start_mem;
-    
     // ---------- write data ----------
     wire [7:0] din0 = (funct3_i == F3_SW) ? store_data_i[7:0] :
                       (funct3_i == F3_SH && off_set[1] == 1'b0) ? store_data_i[7:0] :
@@ -113,10 +120,10 @@ module memstage (
     
     // 4 banks
     wire [7:0] dout0, dout1, dout2, dout3;
-    blk_mem_gen_2 u_dmem0 (.clka(clk_i), .ena(ena0), .wea({we0}), .addra(memory_address), .dina(din0), .douta(dout0));
-    blk_mem_gen_2 u_dmem1 (.clka(clk_i), .ena(ena1), .wea({we1}), .addra(memory_address), .dina(din1), .douta(dout1));
-    blk_mem_gen_2 u_dmem2 (.clka(clk_i), .ena(ena2), .wea({we2}), .addra(memory_address), .dina(din2), .douta(dout2));
-    blk_mem_gen_2 u_dmem3 (.clka(clk_i), .ena(ena3), .wea({we3}), .addra(memory_address), .dina(din3), .douta(dout3));
+    blk_mem_gen_2 u_dmem0 (.clka(clk_i), .ena(start_mem), .wea((we0)), .addra(memory_address), .dina(din0), .douta(dout0));
+    blk_mem_gen_2 u_dmem1 (.clka(clk_i), .ena(start_mem), .wea((we1)), .addra(memory_address), .dina(din1), .douta(dout1));
+    blk_mem_gen_2 u_dmem2 (.clka(clk_i), .ena(start_mem), .wea((we2)), .addra(memory_address), .dina(din2), .douta(dout2));
+    blk_mem_gen_2 u_dmem3 (.clka(clk_i), .ena(start_mem), .wea((we3)), .addra(memory_address), .dina(din3), .douta(dout3));
 
     wire [31:0] lb_data  = (off_set[1:0] == 2'b00) ? {{24{dout0[7]}}, dout0} :
                            (off_set[1:0] == 2'b01) ? {{24{dout1[7]}}, dout1} :
@@ -136,21 +143,39 @@ module memstage (
     wire [31:0] lhu_data = (off_set[1]) ? {16'b0, dout3, dout2} :
                        {16'b0, dout1, dout0}; // LHU: Zero-extend halfword
 
-    wire [31:0] load_data = (funct3 == F3_LB)  ? lb_data  :
-                            (funct3 == F3_LH)  ? lh_data  :
-                            (funct3 == F3_LW)  ? lw_data  :
-                            (funct3 == F3_LBU) ? lbu_data :
-                            (funct3 == F3_LHU) ? lhu_data :
+    wire [31:0] load_data = (funct3_i == F3_LB)  ? lb_data  :
+                            (funct3_i == F3_LH)  ? lh_data  :
+                            (funct3_i == F3_LW)  ? lw_data  :
+                            (funct3_i == F3_LBU) ? lbu_data :
+                            (funct3_i == F3_LHU) ? lhu_data :
                             32'b0;
 
-    always (posedge clk_i or posedge rst_i) begin
-        alu_result_o    <= s_alu_result;
-        rd_addr_o       <= 
-        memtoreg_o      <=
-        pc_address_o    <= 
-        alu_result_o    <=
-        mem_data_o      <=
-        mem_valid_o     <=
+    task reset_MEM_to_WB_reg;
+        begin
+            regwrite_o      <= 0;
+            rd_addr_o       <= 5'b0;
+            memtoreg_o      <= 0;
+            pc_address_o    <= 32'b0;
+            alu_result_o    <= 32'b0;
+            mem_data_o      <= 32'b0;
+            mem_valid_o     <= 0;
+        end
+    endtask
+
+    always @(posedge clk_i or posedge rst_i) begin
+        if (rst_i) begin 
+            reset_MEM_to_WB_reg;
+        end else if (flush_i) begin
+            reset_MEM_to_WB_reg;
+        end else if (~stall_i) begin
+            regwrite_o      <= s_regwrite;
+            rd_addr_o       <= s_rd_addr;
+            memtoreg_o      <= s_memtoreg;
+            pc_address_o    <= s_pc_address;
+            alu_result_o    <= s_alu_result;
+            mem_data_o      <= load_data;
+            mem_valid_o     <= s_valid  && !flush_i;
+        end
     end
 
 endmodule

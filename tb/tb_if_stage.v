@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module tb_if_stage_bram4;
+module tb_if_stage;
 
     // ==========================================================
     // DUT signals
@@ -10,8 +10,8 @@ module tb_if_stage_bram4;
     reg         flush = 0;
     reg  [31:0] pc_b_j = 32'h00000004;
     reg         take_b_j_sig = 0;
-    wire [31:0] pc;
-    wire [31:0] instr;
+    wire [31:0] pc_o;
+    wire [31:0] instr_o;
     wire        valid;
 
     // clock
@@ -25,8 +25,8 @@ module tb_if_stage_bram4;
         .flush_i(flush),
         .pc_b_j_i(pc_b_j),
         .take_b_j_sig_i(take_b_j_sig),
-        .pc_o(pc),
-        .instr_o(instr),
+        .pc_o(pc_o),
+        .instr_o(instr_o),
         .valid_o(valid)
     );
 
@@ -34,6 +34,9 @@ module tb_if_stage_bram4;
     // SIMULATION CONTROL
     // ==========================================================
     initial begin
+        $dumpfile("tb_if_stage.vcd");
+        $dumpvars(0, tb_if_stage);
+
         $display("=== IF Stage BRAM4 Testbench ===");
         $display("Time(ns) | PC | INSTR | VALID | Notes");
 
@@ -44,7 +47,7 @@ module tb_if_stage_bram4;
         repeat (6) begin
             @(posedge clk);
             if (valid)
-                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc, instr, valid);
+                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc_o, instr_o, valid);
         end
 
         // simulate stall
@@ -57,7 +60,7 @@ module tb_if_stage_bram4;
         repeat (3) begin
             @(posedge clk);
             if (valid)
-                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc, instr, valid);
+                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc_o, instr_o, valid);
         end
 
         // simulate branch/jump
@@ -71,7 +74,7 @@ module tb_if_stage_bram4;
         repeat (2) begin
             @(posedge clk);
             if (valid)
-                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc, instr, valid);
+                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc_o, instr_o, valid);
         end
 
         // simulate flush
@@ -83,7 +86,7 @@ module tb_if_stage_bram4;
         repeat (6) begin
             @(posedge clk);
             if (valid)
-                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc, instr, valid);
+                $display("[%0t] PC=%08x INSTR=%08x VALID=%0b", $time, pc_o, instr_o, valid);
         end
 
         $display("=== Simulation End ===");
