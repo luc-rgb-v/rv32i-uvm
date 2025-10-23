@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
-
+//`define SYNTHESIS
 module reg_file (
-    input wire clk,                  // Clock signal
+    input wire clk,                    // Clock signal
     input wire [4:0] rs1_i,            // Source register 1 address
     input wire [4:0] rs2_i,            // Source register 2 address
     input wire [4:0] rd_i,             // Destination register address

@@ -1,74 +1,184 @@
-`timescale 1ns/1ps
-// ------------------------------------------------------------
-// MEM stage pipeline register (no data memory inside)
-// - Passes through EX results and control to WB
-// - Latches data from external data memory port
-// - Priority: reset > flush > (~stall) update > (stall) hold
-//
-// memtoreg encoding (from your control unit):
-//   2'b00 = ALU result
-//   2'b01 = Memory load data
-//   2'b10 = PC+4
-// ------------------------------------------------------------
-module mem_stage (
-    input  wire        clk_i,
-    input  wire        rst_i,
-    input  wire        flush_i,
-    input  wire        stall_i,
+`timescale 1ns / 1ps
+//================= 
+// 17/10/2025
+// mem_stage.v
+//=================
 
-    // From EX stage
-    input  wire        regwrite_i,          // bypass: write-enable to RF
-    input  wire [4:0]  rd_addr_i,           // bypass: destination reg
-    input  wire [1:0]  memtoreg_i,          // bypass: 00=ALU, 01=MEM, 10=PC+4
-    input  wire [31:0] pc_address_i,        // bypass: PC for this instr (for PC+4 path)
-    input  wire [31:0] alu_result_i,        // bypass: ALU result (also mem addr)
+module mem_stage (
+    input wire clk_i,
+    input wire rst_i,
+    input wire stall_i,
+    input wire flush_i,
+
+    // From EX
+
+    input  wire [31:0] alu_result_i,    // byte address
+    input  wire [31:0] store_data_i,
+
+    input  wire        memread_i,
+    input  wire        memwrite_i,
+    input  wire [2:0]  width_select_i,        // LB/LH/LW/LBU/LHU and SB/SH/SW
+    input  wire        regwrite_i,
+    input  wire [4:0]  rd_addr_i,
+    input  wire [1:0]  wb_sel_i,      // 00=ALU, 01=MEM, 10=PC+4
+    input  wire [31:0] pc_address_i,
     input  wire        ex_valid_i,
 
-    // From external data memory (already read this cycle)
-    input  wire [31:0] data_memory_i,       // load data / raw memory read
-
-    // To WB stage (registered)
+    // To WB (MEM/WB register outputs)
+    output reg  [31:0] mem_data_o,
+    output reg  [31:0] alu_result_o,
     output reg         regwrite_o,
     output reg  [4:0]  rd_addr_o,
-    output reg  [1:0]  memtoreg_o,
+    output reg  [1:0]  wb_sel_o,
     output reg  [31:0] pc_address_o,
-    output reg  [31:0] alu_result_o,
-    output reg  [31:0] data_mem_o
-
-    // Optional: expose a valid flag if your pipeline uses it
-    //,output reg         valid_o
+    output reg         mem_valid_o
 );
 
-    // Local task to clear all registered outputs (reset/flush)
-    task automatic clear_regs;
-    begin
-        regwrite_o   <= 1'b0;
-        rd_addr_o    <= 5'b0;
-        memtoreg_o   <= 2'b0;
-        pc_address_o <= 32'b0;
-        alu_result_o <= 32'b0;
-        data_mem_o   <= 32'b0;
-        // valid_o      <= 1'b0;
+    // ---------- funct3 ----------
+    localparam [2:0] LB  = 3'b000;
+    localparam [2:0] LH  = 3'b001;
+    localparam [2:0] LW  = 3'b010;
+    localparam [2:0] LBU = 3'b100;
+    localparam [2:0] LHU = 3'b101;
+
+    localparam [2:0] SB  = 3'b000;
+    localparam [2:0] SH  = 3'b001;
+    localparam [2:0] SW  = 3'b010;
+
+    // ---------- EX supregister (1-cycle) ----------
+    reg         s_regwrite;
+    reg  [4:0]  s_rd_addr;
+    reg  [1:0]  s_wb_sel;
+    reg  [31:0] s_pc_address;
+    reg  [31:0] s_alu_result;
+    reg         s_valid;
+   
+    task reset_sub_reg;
+        begin 
+            s_regwrite      <= 0;
+            s_rd_addr       <= 4'b0;
+            s_wb_sel        <= 0;
+            s_pc_address    <= 32'b0;
+            s_alu_result    <= 32'b0;
+            s_valid         <= 0;
+        end
+    endtask
+
+    always @ (posedge clk_i or posedge rst_i) begin 
+        if (rst_i) begin
+            reset_sub_reg;
+        end else if (flush_i) begin
+            reset_sub_reg;
+        end else if (~stall_i) begin
+            s_regwrite      <= regwrite_i;
+            s_rd_addr       <= rd_addr_i;
+            s_wb_sel        <= wb_sel_i;
+            s_pc_address    <= pc_address_i;
+            s_alu_result    <= alu_result_i;
+            s_valid         <= ex_valid_i  && !flush_i;
+        end
     end
+
+    wire [12:0] memory_address = alu_result_i[14:2];
+    wire [1:0] off_set = alu_result_i[1:0];
+
+    // ---------- alignment check ----------
+    wire misalign_h = memwrite_i ? (width_se_i == SH && alu_result_i[0]) : 1'b0;
+    wire misalign_w = memwrite_i ? (width_se_i == SW && |alu_result_i[1:0]) : 1'b0;
+    wire misaligned = misalign_h | misalign_w;
+    wire start_mem = ex_valid_i & (memread_i | memwrite_i) & ~misaligned;
+    
+    // ---------- write enables ----------
+    wire we0 = start_mem & memwrite_i &
+               ( (width_se_i == SW) |
+                 (width_se_i == SH && off_set[1] == 1'b0) |
+                 (width_se_i == SB && off_set == 2'b00) );
+    wire we1 = start_mem & memwrite_i &
+               ( (width_se_i == SW) |
+                 (width_se_i == SH && off_set[1] == 1'b0) |
+                 (width_se_i == SB && off_set == 2'b01) );
+    wire we2 = start_mem & memwrite_i &
+               ( (width_se_i == SW) |
+                 (width_se_i == SH && off_set[1] == 1'b1) |
+                 (width_se_i == SB && off_set == 2'b10) );
+    wire we3 = start_mem & memwrite_i &
+               ( (width_se_i == SW) |
+                 (width_se_i == SH && off_set[1] == 1'b1) |
+                 (width_se_i == SB && off_set == 2'b11) );
+    
+    // ---------- write data ----------
+    wire [7:0] din0 = (width_se_i == SW) ? store_data_i[7:0] :
+                      (width_se_i == SH && off_set[1] == 1'b0) ? store_data_i[7:0] :
+                      (width_se_i == SB && off_set == 2'b00) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din1 = (width_se_i == SW) ? store_data_i[15:8] :
+                      (width_se_i == SH && off_set[1] == 1'b0) ? store_data_i[15:8] :
+                      (width_se_i == SB && off_set == 2'b01) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din2 = (width_se_i == SW) ? store_data_i[23:16] :
+                      (width_se_i == SH && off_set[1] == 1'b1) ? store_data_i[7:0] :
+                      (width_se_i == SB && off_set == 2'b10) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din3 = (width_se_i == SW) ? store_data_i[31:24] :
+                      (width_se_i == SH && off_set[1] == 1'b1) ? store_data_i[15:8] :
+                      (width_se_i == SB && off_set == 2'b11) ? store_data_i[7:0] : 8'h00;
+    
+    // 4 banks
+    wire [7:0] dout0, dout1, dout2, dout3;
+    blk_mem_gen_2 u_dmem0 (.clka(clk_i), .ena(start_mem), .wea((we0)), .addra(memory_address), .dina(din0), .douta(dout0));
+    blk_mem_gen_2 u_dmem1 (.clka(clk_i), .ena(start_mem), .wea((we1)), .addra(memory_address), .dina(din1), .douta(dout1));
+    blk_mem_gen_2 u_dmem2 (.clka(clk_i), .ena(start_mem), .wea((we2)), .addra(memory_address), .dina(din2), .douta(dout2));
+    blk_mem_gen_2 u_dmem3 (.clka(clk_i), .ena(start_mem), .wea((we3)), .addra(memory_address), .dina(din3), .douta(dout3));
+
+    wire [31:0] lb_data  = (off_set[1:0] == 2'b00) ? {{24{dout0[7]}}, dout0} :
+                           (off_set[1:0] == 2'b01) ? {{24{dout1[7]}}, dout1} :
+                           (off_set[1:0] == 2'b10) ? {{24{dout2[7]}}, dout2} :
+                           {{24{dout3[7]}}, dout3}; // LB: Sign-extend selected byte
+    
+    wire [31:0] lh_data  = (off_set[1]) ? {{16{dout3[7]}}, dout3, dout2} :
+                           {{16{dout1[7]}}, dout1, dout0}; // LH: Sign-extend halfword
+    
+    wire [31:0] lw_data  = {dout3, dout2, dout1, dout0}; 
+    
+    wire [31:0] lbu_data = (off_set[1:0] == 2'b00) ? {24'b0, dout0} :
+                           (off_set[1:0] == 2'b01) ? {24'b0, dout1} :
+                           (off_set[1:0] == 2'b10) ? {24'b0, dout2} :
+                           {24'b0, dout3}; // LBU: Zero-extend selected byte
+    
+    wire [31:0] lhu_data = (off_set[1]) ? {16'b0, dout3, dout2} :
+                       {16'b0, dout1, dout0}; // LHU: Zero-extend halfword
+
+    wire [31:0] load_data = (width_se_i == LB)  ? lb_data  :
+                            (width_se_i == LH)  ? lh_data  :
+                            (width_se_i == LW)  ? lw_data  :
+                            (width_se_i == LBU) ? lbu_data :
+                            (width_se_i == LHU) ? lhu_data :
+                            32'b0;
+
+    task reset_MEM_to_WB_reg;
+        begin
+            regwrite_o      <= 0;
+            rd_addr_o       <= 5'b0;
+            wb_sel_o        <= 0;
+            pc_address_o    <= 32'b0;
+            alu_result_o    <= 32'b0;
+            mem_data_o      <= 32'b0;
+            mem_valid_o     <= 0;
+        end
     endtask
 
     always @(posedge clk_i or posedge rst_i) begin
-        if (rst_i) begin
-            clear_regs();
+        if (rst_i) begin 
+            reset_MEM_to_WB_reg;
         end else if (flush_i) begin
-            // Insert bubble into MEM/WB
-            clear_regs();
-        end else if (!stall_i && (ex_valid_i == 1'b1)) begin
-            // Normal pipeline advance
-            regwrite_o   <= regwrite_i;
-            rd_addr_o    <= rd_addr_i;
-            memtoreg_o   <= memtoreg_i;
-            pc_address_o <= pc_address_i;
-            alu_result_o <= alu_result_i;
-            data_mem_o   <= data_memory_i;
-            // valid_o      <= 1'b1;
+            reset_MEM_to_WB_reg;
+        end else if (~stall_i) begin
+            regwrite_o      <= s_regwrite;
+            rd_addr_o       <= s_rd_addr;
+            wb_sel_o        <= s_wb_sel;
+            pc_address_o    <= s_pc_address;
+            alu_result_o    <= s_alu_result;
+            mem_data_o      <= load_data;
+            mem_valid_o     <= s_valid  && !flush_i;
         end
-        // else: stall_i==1 -> hold previous values (no assignments)
     end
 
 endmodule
+
