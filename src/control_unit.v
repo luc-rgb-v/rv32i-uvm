@@ -24,7 +24,8 @@ module control_unit (
     output wire        jal_o,
     output wire        jalr_o,
 
-    output wire        alusrc_o,           // 0=reg 1=imm
+    output wire        se_rs1_pc_o, 
+    output wire        se_rs2_imm_o,
     output wire [3:0]  aluop_o,            // 4-bit ALU opcode (incl. branches)
     output wire [11:0] csr_addr_o,
     output wire [4:0]  zimm_o,
@@ -148,12 +149,14 @@ module control_unit (
     assign jalr_o   = (opcode == OPCODE_I_JALR);
 
     // --- ALU src select (typical: reg-imm for I/load/store/jalr/lui/auipc)
-    assign alusrc_o = (opcode == OPCODE_I_ARITH ||
+    assign se_rs1_pc_o = (opcode == OPCODE_I_ARITH ||
                        opcode == OPCODE_I_LOAD  ||
                        opcode == OPCODE_S       ||
                        opcode == OPCODE_AUIPC   ||
                        opcode == OPCODE_LUI     ||
                        opcode == OPCODE_I_JALR);
+
+    assign se_rs2_imm_o = (opcode == OPCODE_AUIPC);
 
     // --- reg writeback enables
     wire writes_rd = (opcode == OPCODE_R)        ||

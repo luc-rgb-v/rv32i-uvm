@@ -14,17 +14,14 @@ module ex_stage (
     input wire flush_i,
 
     // From ID/EX pipeline (registered ID outputs)
-
     input wire        jal_i,
     input wire        jalr_i,
-    input wire        rs1_se_pc_i,
-    input wire        alusrc_i,
+    input wire        se_rs1_pc_i,      // select RS1 or PC for alu a
+    input wire        se_rs2_imm_i,         // select RS2 or IMM for alu b
     input wire [3:0]  aluop_i,
     input wire [31:0] rs1_data_i,
     input wire [31:0] rs2_data_i,
     input wire [31:0] imm_i,
-    input wire [4:0]  rs1_addr_i,
-    input wire [4:0]  rs2_addr_i,
     input wire        memread_i,
     input wire        memwrite_i,
     input wire [2:0]  width_select_i,
@@ -34,14 +31,22 @@ module ex_stage (
     input wire [31:0] pc_address_i,
     input wire        id_valid_i,
 
-    input wire [2:0]  fw0_sel_i,
-    input wire [2:0]  fw1_sel_i,
+    // Forwarding selects (from control path)
+    input wire [2:0]  fw0_sel_i,       // select for first 5-to-1 mux (fwd A)
+    input wire [2:0]  fw1_sel_i,       // select for second 5-to-1 mux (fwd B)
+
+    // Forwarding data inputs (these were missing; provide values from
+    // EX/MEM.ALU, EX/MEM.MEM/PC+4, MEM/WB.ALU, MEM/WB.MEM/PC+4, etc.)
+    input wire [31:0] fw_b_i,          // forwarded candidate b
+    input wire [31:0] fw_c_i,          // forwarded candidate c
+    input wire [31:0] fw_d_i,          // forwarded candidate d
+    input wire [31:0] fw_e_i,          // forwarded candidate e
+
+    output reg [31:0] pc_bj_o,
+    output reg        bj_sig_o,
     // EX/MEM registered outputs
     output reg [31:0] alu_result_o,
     output reg [31:0] store_data_o,
-
-    output reg [31:0] pc_b_j_o, 
-    output reg        b_j_taken_o,
 
     output reg        regwrite_o,
     output reg [4:0]  rd_addr_o,
@@ -53,41 +58,47 @@ module ex_stage (
 
     output reg [31:0] pc_address_o,
     output reg        ex_valid_o
+
 );
 
     // a=from regfile(ID/EX), b=EX/MEM.ALU, c=EX/MEM.MEM/PC+4, d=MEM/WB.ALU, e=MEM/WB.MEM/PC+4
     wire [31:0] fwd_a_w;
     wire [31:0] fwd_b_w;  // rs2 forwarded value (used as store data)
 
+    // fwd A: use fw0_sel_i to choose between (a,b,c,d,e)
     mux_5to1 u_mux_5to1_a (
         .a_i (rs1_data_i),
-        .b_i (b_i),
-        .c_i (c_i),
-        .d_i (d_i),
-        .e_i (e_i),
-        .se_i(se_i),
+        .b_i (fw_b_i),
+        .c_i (fw_c_i),
+        .d_i (fw_d_i),
+        .e_i (fw_e_i),
+        .se_i(fw0_sel_i),
         .y_o (fwd_a_w)
     );
 
+    // fwd B: use fw1_sel_i to choose between (a,b,c,d,e)
     mux_5to1 u_mux_5to1_b (
         .a_i (rs2_data_i),
-        .b_i (b_i),
-        .c_i (c_i),
-        .d_i (d_i),
-        .e_i (e_i),
-        .se_i(se_i),
+        .b_i (fw_b_i),
+        .c_i (fw_c_i),
+        .d_i (fw_d_i),
+        .e_i (fw_e_i),
+        .se_i(fw1_sel_i),
         .y_o (fwd_b_w)
     );
 
     wire [31:0] alu_op_b_w;
     wire [31:0] alu_op_a_w;
 
+    // If se_rs1_pc_i asserted, choose PC as ALU A input (for JAL)
     mux_2to1 umux_a (
         .a_i (fwd_a_w),
-        .b_i (pc_i),
+        .b_i (pc_address_i),
         .se_i(se_rs1_pc_i),
         .y_o (alu_op_a_w)
     );
+
+    // If se_rs2_imm_i asserted, choose IMM as ALU B input (typical RISC-V ALUSrc)
     mux_2to1 umux_b (
         .a_i (fwd_b_w),
         .b_i (imm_i),
@@ -110,14 +121,14 @@ module ex_stage (
     // Branch/Jump target calculation
     // - use forwarded A for JALR (rs1 + imm)
     // - JAL uses PC + imm (handled in this block)
-    wire [31:0] pc_b_j_w;
+    wire [31:0] pc_bj_w;
 
     branch_jump_calculation u_bj_cal (
         .pc_i       (pc_address_i),
         .rs_1_i     (fwd_a_w),      // forwarded RS1 for JALR
         .imm_i      (imm_i),
         .jalr_sig_i (jalr_i),
-        .pc_b_j_o   (pc_b_j_w)
+        .pc_b_j_o   (pc_bj_w)
     );
 
     // final taken flag
@@ -130,8 +141,8 @@ module ex_stage (
     begin
         alu_result_o   <= 32'b0;
         store_data_o   <= 32'b0;
-        pc_b_j_o       <= 32'b0;
-        b_j_taken_o    <= 1'b0;
+        bj_sig_o       <= 1'b0;
+        pc_bj_o        <= 32'b0;
 
         regwrite_o     <= 1'b0;
         rd_addr_o      <= 5'b0;
@@ -154,8 +165,8 @@ module ex_stage (
             // data/results
             alu_result_o   <= alu_result_w;
             store_data_o   <= fwd_b_w;       // rs2 after forwarding (before imm)
-            pc_b_j_o       <= pc_b_j_w;
-            b_j_taken_o    <= b_j_taken_w;
+            bj_sig_o       <= b_j_taken_w;
+            pc_bj_o        <= pc_bj_w;
 
             // pass-through controls to MEM/WB
             regwrite_o     <= regwrite_i;

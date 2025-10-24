@@ -52,8 +52,8 @@ module id_stage (
     // -----------------------------------------
     // Wires between decoder/control and regfile
     // -----------------------------------------
-    wire [4:0]  src1_addr_w;
-    wire [4:0]  src2_addr_w;
+    wire [4:0]  rs1_addr_w;
+    wire [4:0]  rs2_addr_w;
     wire [31:0] imm_w;
     wire        regwrite_w;
     wire [4:0]  rd_addr_w;
@@ -67,20 +67,19 @@ module id_stage (
     wire        memread_w;
     wire        memwrite_w;
     wire [2:0]  width_select_w;
-    wire [1:0]  memtoreg_w;
+    wire [1:0]  wb_sel_w;
 
     wire [31:0] rs1_data_w;
     wire [31:0] rs2_data_w;
+    wire valid_m_instruction_w;
     
-    assign rs1_addr_w = src1_addr_w;
-    assign rs2_addr_w = src2_addr_w;
     // -------------------------
     // Control Unit instance
     // -------------------------
     control_unit u_ctrl (
         .instruction_i (instruction_i),
-        .src1_addr_o   (src1_addr_w),
-        .src2_addr_o   (src2_addr_w),
+        .src1_addr_o   (rs1_addr_w),
+        .src2_addr_o   (rs2_addr_w),
         .imm_o         (imm_w),
         .regwrite_o    (regwrite_w),
         .rd_addr_o     (rd_addr_w),
@@ -94,8 +93,8 @@ module id_stage (
         .memread_o     (memread_w),
         .memwrite_o    (memwrite_w),
         .width_select_o(width_select_w),
-        .memtoreg_o    (memtoreg_w),
-        .valid_m_instruction_o(valid_m_instruction_i)
+        .memtoreg_o    (wb_sel_w),
+        .valid_m_instruction_o(valid_m_instruction_w)
     );
 
     // -------------------------
@@ -103,8 +102,8 @@ module id_stage (
     // -------------------------
     reg_file u_rf (
         .clk          (clk_i),
-        .rs1_i        (src1_addr_w),
-        .rs2_i        (src2_addr_w),
+        .rs1_i        (rs1_addr_w),
+        .rs2_i        (rs2_addr_w),
         .rd_i         (wb_rd_addr_i),
         .wd_i         (wb_wdata_i),
         .reg_write_i  (wb_regwrite_i),
@@ -130,9 +129,9 @@ module id_stage (
         memread_o             <= 1'b0;
         memwrite_o            <= 1'b0;
         width_select_o        <= 3'b0;
-        memtoreg_o            <= 2'b0;
-        operand_a_o           <= 32'b0;
-        operand_b_o           <= 32'b0;
+        wb_sel_o            <= 2'b0;
+        rs1_addr_o           <= 32'b0;
+        rs2_addr_o           <= 32'b0;
         pc_address_o          <= 32'b0;
         valid_m_instruction_o <= 1'b0;
         id_valid_o            <= 1'b0;
@@ -170,14 +169,14 @@ module id_stage (
             memread_o             <= memread_w;
             memwrite_o            <= memwrite_w;
             width_select_o        <= width_select_w;
-            memtoreg_o            <= memtoreg_w;
+            wb_sel_o               <= wb_sel_w;
             rs1_data_o            <= rs1_data_w;
             rs2_data_o            <= rs2_data_w;
             pc_address_o          <= pc_address_i;
-            valid_m_instruction_o <= valid_m_instruction_i;
+            valid_m_instruction_o <= valid_m_instruction_w;
             id_valid_o            <= if_valid_i;
-            rs1_addr_o            <= src1_addr_w;
-            rs2_addr_o            <= src2_addr_w;
+            rs1_addr_o            <= rs1_addr_w;
+            rs2_addr_o            <= rs2_addr_w;
         end
         // else: hold on stall_i
     end

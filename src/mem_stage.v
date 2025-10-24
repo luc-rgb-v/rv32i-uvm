@@ -83,42 +83,42 @@ module mem_stage (
     wire [1:0] off_set = alu_result_i[1:0];
 
     // ---------- alignment check ----------
-    wire misalign_h = memwrite_i ? (width_se_i == SH && alu_result_i[0]) : 1'b0;
-    wire misalign_w = memwrite_i ? (width_se_i == SW && |alu_result_i[1:0]) : 1'b0;
+    wire misalign_h = memwrite_i ? (width_select_i == SH && alu_result_i[0]) : 1'b0;
+    wire misalign_w = memwrite_i ? (width_select_i == SW && |alu_result_i[1:0]) : 1'b0;
     wire misaligned = misalign_h | misalign_w;
     wire start_mem = ex_valid_i & (memread_i | memwrite_i) & ~misaligned;
     
     // ---------- write enables ----------
     wire we0 = start_mem & memwrite_i &
-               ( (width_se_i == SW) |
-                 (width_se_i == SH && off_set[1] == 1'b0) |
-                 (width_se_i == SB && off_set == 2'b00) );
+               ( (width_select_i == SW) |
+                 (width_select_i == SH && off_set[1] == 1'b0) |
+                 (width_select_i == SB && off_set == 2'b00) );
     wire we1 = start_mem & memwrite_i &
-               ( (width_se_i == SW) |
-                 (width_se_i == SH && off_set[1] == 1'b0) |
-                 (width_se_i == SB && off_set == 2'b01) );
+               ( (width_select_i == SW) |
+                 (width_select_i == SH && off_set[1] == 1'b0) |
+                 (width_select_i == SB && off_set == 2'b01) );
     wire we2 = start_mem & memwrite_i &
-               ( (width_se_i == SW) |
-                 (width_se_i == SH && off_set[1] == 1'b1) |
-                 (width_se_i == SB && off_set == 2'b10) );
+               ( (width_select_i == SW) |
+                 (width_select_i == SH && off_set[1] == 1'b1) |
+                 (width_select_i == SB && off_set == 2'b10) );
     wire we3 = start_mem & memwrite_i &
-               ( (width_se_i == SW) |
-                 (width_se_i == SH && off_set[1] == 1'b1) |
-                 (width_se_i == SB && off_set == 2'b11) );
+               ( (width_select_i == SW) |
+                 (width_select_i == SH && off_set[1] == 1'b1) |
+                 (width_select_i == SB && off_set == 2'b11) );
     
     // ---------- write data ----------
-    wire [7:0] din0 = (width_se_i == SW) ? store_data_i[7:0] :
-                      (width_se_i == SH && off_set[1] == 1'b0) ? store_data_i[7:0] :
-                      (width_se_i == SB && off_set == 2'b00) ? store_data_i[7:0] : 8'h00;
-    wire [7:0] din1 = (width_se_i == SW) ? store_data_i[15:8] :
-                      (width_se_i == SH && off_set[1] == 1'b0) ? store_data_i[15:8] :
-                      (width_se_i == SB && off_set == 2'b01) ? store_data_i[7:0] : 8'h00;
-    wire [7:0] din2 = (width_se_i == SW) ? store_data_i[23:16] :
-                      (width_se_i == SH && off_set[1] == 1'b1) ? store_data_i[7:0] :
-                      (width_se_i == SB && off_set == 2'b10) ? store_data_i[7:0] : 8'h00;
-    wire [7:0] din3 = (width_se_i == SW) ? store_data_i[31:24] :
-                      (width_se_i == SH && off_set[1] == 1'b1) ? store_data_i[15:8] :
-                      (width_se_i == SB && off_set == 2'b11) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din0 = (width_select_i == SW) ? store_data_i[7:0] :
+                      (width_select_i == SH && off_set[1] == 1'b0) ? store_data_i[7:0] :
+                      (width_select_i == SB && off_set == 2'b00) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din1 = (width_select_i == SW) ? store_data_i[15:8] :
+                      (width_select_i == SH && off_set[1] == 1'b0) ? store_data_i[15:8] :
+                      (width_select_i == SB && off_set == 2'b01) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din2 = (width_select_i == SW) ? store_data_i[23:16] :
+                      (width_select_i == SH && off_set[1] == 1'b1) ? store_data_i[7:0] :
+                      (width_select_i == SB && off_set == 2'b10) ? store_data_i[7:0] : 8'h00;
+    wire [7:0] din3 = (width_select_i == SW) ? store_data_i[31:24] :
+                      (width_select_i == SH && off_set[1] == 1'b1) ? store_data_i[15:8] :
+                      (width_select_i == SB && off_set == 2'b11) ? store_data_i[7:0] : 8'h00;
     
     // 4 banks
     wire [7:0] dout0, dout1, dout2, dout3;
@@ -145,11 +145,11 @@ module mem_stage (
     wire [31:0] lhu_data = (off_set[1]) ? {16'b0, dout3, dout2} :
                        {16'b0, dout1, dout0}; // LHU: Zero-extend halfword
 
-    wire [31:0] load_data = (width_se_i == LB)  ? lb_data  :
-                            (width_se_i == LH)  ? lh_data  :
-                            (width_se_i == LW)  ? lw_data  :
-                            (width_se_i == LBU) ? lbu_data :
-                            (width_se_i == LHU) ? lhu_data :
+    wire [31:0] load_data = (width_select_i == LB)  ? lb_data  :
+                            (width_select_i == LH)  ? lh_data  :
+                            (width_select_i == LW)  ? lw_data  :
+                            (width_select_i == LBU) ? lbu_data :
+                            (width_select_i == LHU) ? lhu_data :
                             32'b0;
 
     task reset_MEM_to_WB_reg;
