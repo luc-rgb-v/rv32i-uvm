@@ -25,10 +25,10 @@ module tb_if;
         .rst_i(rst_i),
         .stall_i(stall_i),
         .flush_i(flush_i),
-        .pc_bj_i(pc_bj_i),
         .take_bj_sig_i(take_bj_sig_i),
-        .pc_o(pc_o),
+        .pc_bj_i(pc_bj_i),
         .instr_o(instr_o),
+        .pc_o(pc_o),
         .valid_o(valid_o)
     );
 
@@ -36,7 +36,7 @@ module tb_if;
     // SIMULATION CONTROL
     // ==========================================================
     initial begin
-        $dumpfile("tb_if.vcd");
+        $dumpfile("if_stage_test.vcd");
         $dumpvars(0, tb_if);
 
         $display("=== IF Stage BRAM Testbench ===");

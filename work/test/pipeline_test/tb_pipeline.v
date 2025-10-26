@@ -1,65 +1,99 @@
-`timescale 1ns / 1ps
-module tb_pipeline;
+`timescale 1ns/1ps
 
-    // DUT signal
-    reg clk = 0;
-    reg rst = 1;
-    reg flush = 0;
-    reg stall = 0;
-    reg [7:0] data_i = 8'h0;
+module mimic_pipeline_tb;
 
-    wire [7:0] data_1;
-    wire [7:0] data_2;
-    wire [7:0] data_3;
-    wire [7:0] data_4;
+    // Clock + Reset
+    reg clk;
+    reg rst;
 
-    always #5 clk = ~clk;
+    // Flush signals
+    reg flush_sub_if;
+    reg flush_if;
+    reg flush_id;
+    reg flush_ex;
+    reg flush_sub_mem;
+    reg flush_mem;
 
-    pipeline_reg dut (
+    // Stall signals
+    reg stall_pc;
+    reg stall_sub_if;
+    reg stall_if;
+    reg stall_id;
+    reg stall_ex;
+    reg stall_sub_mem;
+
+    // Outputs
+    wire [7:0] pc_o;
+    wire [7:0] instruction_data_o;
+    wire [15:0] if_stage_o;
+    wire [15:0] id_stage_o;
+    wire [15:0] ex_stage_o;
+    wire [7:0] data_mem_o;
+    wire [23:0] mem_stage_o;
+    wire [23:0] reg_file_o;
+
+    // Instantiate UUT
+    mimic_pipeline uut (
         .clk(clk),
         .rst(rst),
-        .flush(flush),
-        .stall(stall),
-        .data_i(data_i),
-        .data_1(data_1),
-        .data_2(data_2),
-        .data_3(data_3),
-        .data_4(data_4)
+
+        .flush_sub_if(flush_sub_if),
+        .flush_if(flush_if),
+        .flush_id(flush_id),
+        .flush_ex(flush_ex),
+        .flush_sub_mem(flush_sub_mem),
+        .flush_mem(flush_mem),
+
+        .stall_pc(stall_pc),
+        .stall_sub_if(stall_sub_if),
+        .stall_if(stall_if),
+        .stall_id(stall_id),
+        .stall_ex(stall_ex),
+        .stall_sub_mem(stall_sub_mem),
+
+        .pc_o(pc_o),
+        .instruction_data_o(instruction_data_o),
+        .if_stage_o(if_stage_o),
+        .id_stage_o(id_stage_o),
+        .ex_stage_o(ex_stage_o),
+        .data_mem_o(data_mem_o),
+        .mem_stage_o(mem_stage_o),
+        .reg_file_o(reg_file_o)
     );
 
+    always #5 clk = ~clk;
+    
     initial begin
-        $dumpfile("tb_pipeline.vcd");
-        $dumpvars(0, tb_pipeline);
-        $display("===test pipeline===");
-        $display("=== testbench   ===");
+        $dumpfile("test_pipeline_flush_pipeline.vcd");
+        $dumpvars(0, mimic_pipeline_tb);
     end
-
+    
     initial begin 
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #20; rst = 0; data_i = 8'h44;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #10; data_i = 8'h33;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #10; data_i = 8'h22;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #10; data_i = 8'h11;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #10; data_i = 8'hFF; flush = 1;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #20; data_i = 8'hAA; flush = 0;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #30; data_i = 8'hBB; stall = 1;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #20; data_i = 8'hCC; stall = 0;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #10; data_i = 8'hDD;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        #40;
-        $display("[%0t] rst = %0b flush = %0b stall = %0b data_i = %08x data_1 = %08x data_2 = %08x data_3 = %08x data_4 = %08x", $time, rst, flush, stall, data_i, data_1, data_2, data_3, data_4);
-        $display("=== test finish ===");
-        $finish;
+        #65; flush_if = 1; flush_id = 1; flush_ex = 1;
+        #5; flush_if = 1; flush_id = 0; flush_ex = 0;
+        #10; flush_if = 0;
+    end 
+
+    initial begin
+        clk = 0;
+        rst = 1;
+        flush_sub_if = 0;
+        flush_if = 0;
+        flush_id = 0;
+        flush_ex = 0;
+        flush_sub_mem = 0;
+        flush_mem = 0;
+
+        stall_pc = 0;
+        stall_sub_if = 0;
+        stall_if = 0;
+        stall_id = 0;
+        stall_ex = 0;
+        stall_sub_mem = 0;
+        #10; rst = 0;
+
+
+        #400 $finish;
     end
 
 endmodule
-
-
