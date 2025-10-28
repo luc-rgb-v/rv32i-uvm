@@ -138,21 +138,21 @@ module ex_stage (
     // EX/MEM pipeline registers
     // -----------------------------------------------------------------
     task flush_regs;
-    begin
-        alu_result_o   <= 32'b0;
-        store_data_o   <= 32'b0;
-        bj_sig_o       <= 1'b0;
-        pc_bj_o        <= 32'b0;
+        begin
+            alu_result_o   <= 32'b0;
+            store_data_o   <= 32'b0;
+            bj_sig_o       <= 1'b0;
+            pc_bj_o        <= 32'b0;
 
-        regwrite_o     <= 1'b0;
-        rd_addr_o      <= 5'b0;
-        wb_sel_o       <= 2'b0;
-        memread_o      <= 1'b0;
-        memwrite_o     <= 1'b0;
-        width_select_o <= 3'b0;
-        pc_address_o   <= 32'b0;
-        ex_valid_o     <= 1'b0;
-    end
+            regwrite_o     <= 1'b0;
+            rd_addr_o      <= 5'b0;
+            wb_sel_o       <= 2'b0;
+            memread_o      <= 1'b0;
+            memwrite_o     <= 1'b0;
+            width_select_o <= 3'b0;
+            pc_address_o   <= 32'b0;
+            ex_valid_o     <= 1'b0;
+        end
     endtask
 
     always @(posedge clk_i or posedge rst_i) begin
