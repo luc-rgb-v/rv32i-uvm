@@ -3,6 +3,7 @@
 `timescale 1ns / 1ps
 //`define MORNITOR
 //`define DEBUG_INSTRUCTION
+//`define MEMDELAY
 `define DEBUG
 
 module risc_rv32i (
@@ -28,6 +29,9 @@ module risc_rv32i (
 `ifdef DEBUG_INSTRUCTION
     ,input wire [31:0] instruction_i,
     ,input wire [31:0] pc_i
+`endif
+`ifndef MEMDELAY
+    ,input stall_i
 `endif
     );
 
@@ -95,7 +99,7 @@ module risc_rv32i (
     // Blocking assignments IF
     assign if_pc_next_w = if_bj_taken_w ? if_pc_bj_w : if_pc_w + 32'h4;
     assign if_pc_w = pc_r;
-    assign if_instruction_w = instruction_mems_r[if_pc_w[9:0]];
+    assign if_instruction_w = instruction_mems_r[if_pc_w[11:2]];
 
 `ifdef DEBUG
     assign pc = pc_r;
@@ -660,6 +664,7 @@ module risc_rv32i (
                             (forward_mux_2_w == 4'b0010) ? exmem_pc_plus_r : 
                             (forward_mux_2_w == 4'b0001) ? exmem_alu_result_r : ex_rs2_data_w;
 
+`ifdef MEMDELAY
     assign stall_pc = mem_memread_w 
                     && (mem_rd_addr_w != 5'd0)
                     && ((ex_rs1_addr_w == mem_rd_addr_w)
@@ -676,5 +681,8 @@ module risc_rv32i (
                     && (mem_rd_addr_w != 5'd0)
                     && ((ex_rs1_addr_w == mem_rd_addr_w)
                     ||  (ex_rs2_addr_w == mem_rd_addr_w));
+`else
+   assign {stall_pc, stall_ifid, stall_idex, stall_exmem} = {4{stall_i}};
+`endif
 
 endmodule
