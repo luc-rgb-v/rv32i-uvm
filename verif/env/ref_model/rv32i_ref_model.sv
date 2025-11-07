@@ -1,0 +1,22 @@
+`ifndef BUS_REF_MODEL_PKG
+`define BUS_REF_MODEL_PKG
+
+package bus_ref_model_pkg;
+
+   import uvm_pkg::*;
+   `include "uvm_macros.svh"
+
+   //////////////////////////////////////////////////////////
+   // importing packages : agent,ref model, register ...
+   /////////////////////////////////////////////////////////
+   import bus_agent_pkg::*;
+
+   //////////////////////////////////////////////////////////
+   // include ref model files 
+   /////////////////////////////////////////////////////////
+  `include "bus_ref_model.sv"
+
+endpackage
+
+`endif
+
