@@ -22,6 +22,7 @@ module risc_rv32i (
     ,output wire [31:0] exmem_rs2_data
     ,output wire [31:0] memwb_alu_result
     ,output wire [31:0] memwb_mem_data
+    ,output wire [31:0] memwb_pc_plus
     ,output wire        wb_regwrite
     ,output wire [4:0]  wb_rd_addr
     ,output wire [31:0] wb_data
@@ -484,6 +485,7 @@ module risc_rv32i (
 `ifdef DEBUG
     assign memwb_alu_result = memwb_alu_result_r;
     assign memwb_mem_data = memwb_mem_data_r;
+    assign memwb_pc_plus = memwb_pc_plus_r;
 `endif
 
     // address / offset

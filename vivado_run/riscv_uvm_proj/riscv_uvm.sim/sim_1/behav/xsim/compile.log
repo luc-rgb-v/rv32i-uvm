@@ -1,6 +1,0 @@
-INFO: [VRFC 10-2263] Analyzing Verilog file "D:/Github/repositories/rv32i-uvm/src/rv32i.v" into library xil_defaultlib
-INFO: [VRFC 10-311] analyzing module risc_rv32i
-INFO: [VRFC 10-2263] Analyzing Verilog file "D:/Github/repositories/rv32i-uvm/tb/test_rv32i.v" into library xil_defaultlib
-INFO: [VRFC 10-311] analyzing module tb_risc_rv32i
-INFO: [VRFC 10-2263] Analyzing Verilog file "D:/Github/repositories/rv32i-uvm/vivado_run/riscv_uvm_proj/riscv_uvm.sim/sim_1/behav/xsim/glbl.v" into library xil_defaultlib
-INFO: [VRFC 10-311] analyzing module glbl

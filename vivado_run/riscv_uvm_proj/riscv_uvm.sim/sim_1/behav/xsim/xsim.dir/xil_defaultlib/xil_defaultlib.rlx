@@ -1,7 +1,0 @@
-0.7
-2020.2
-May 22 2025
-00:13:55
-D:/Github/repositories/rv32i-uvm/src/rv32i.v,1762711073,verilog,,D:/Github/repositories/rv32i-uvm/tb/test_rv32i.v,,risc_rv32i,,,C:/Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
-D:/Github/repositories/rv32i-uvm/tb/test_rv32i.v,1762332949,verilog,,,,tb_risc_rv32i,,,C:/Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
-D:/Github/repositories/rv32i-uvm/vivado_run/riscv_uvm_proj/riscv_uvm.sim/sim_1/behav/xsim/glbl.v,1741209010,verilog,,,,glbl,,,,,,,,

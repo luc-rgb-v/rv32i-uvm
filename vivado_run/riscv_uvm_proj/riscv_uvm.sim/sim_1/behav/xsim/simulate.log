@@ -1,9 +1,0 @@
-Time resolution is 1 ps
-Index 0: 00100093
-Index 1: 00200113
-Index 2: 00300193
-Index 3: 00400213
-WARNING: File/Multi-channel descriptor (-20000) passed to $fclose is not valid. Please compile the design with -debug for source location information.
-WARNING: File/Multi-channel descriptor (-20000) passed to $fclose is not valid. Please compile the design with -debug for source location information.
-WARNING: File/Multi-channel descriptor (-20000) passed to $fclose is not valid. Please compile the design with -debug for source location information.
-$finish called at time : 800 ns : File "D:/Github/repositories/rv32i-uvm/tb/test_rv32i.v" Line 266
