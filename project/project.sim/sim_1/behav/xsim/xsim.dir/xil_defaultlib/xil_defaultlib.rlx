@@ -1,0 +1,8 @@
+0.7
+2020.2
+May 22 2025
+00:13:55
+D:/Github/repositories/rv32i-uvm/project/project.gen/sources_1/ip/blk_mem_gen_0/sim/blk_mem_gen_0.v,1763346314,verilog,,D:/Github/repositories/rv32i-uvm/src/risc_rv32i.v,,blk_mem_gen_0,,,C:/Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
+D:/Github/repositories/rv32i-uvm/project/project.sim/sim_1/behav/xsim/glbl.v,1741209010,verilog,,,,glbl,,,,,,,,
+D:/Github/repositories/rv32i-uvm/src/risc_rv32i.v,1763351112,verilog,,D:/Github/repositories/rv32i-uvm/tb/test.v,,risc_rv32i,,,C:/Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
+D:/Github/repositories/rv32i-uvm/tb/test.v,1763351443,verilog,,,,tb_risc_rv32i,,,C:/Xilinx/2025.1/Vivado/data/rsb/busdef,,,,,
